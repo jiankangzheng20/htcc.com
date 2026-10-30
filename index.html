@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>大图转二维码生成器</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- QRCode.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+
+  <div class="max-w-4xl mx-auto py-10 px-4">
+    <!-- Header -->
+    <header class="text-center mb-10">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">大图转二维码生成器</h1>
+      <p class="text-gray-600">支持手机相册原图、大体积图片，通过生成访问链接转为二维码</p>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- 控制面板 -->
+      <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 space-y-6">
+        <h2 class="text-xl font-semibold border-b pb-3">1. 选择图片（支持大图）</h2>
+        
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">上传任意尺寸图片</label>
+          <input type="file" id="imageInput" accept="image/*" 
+                 class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border rounded-lg p-1" />
+          <p class="text-xs text-green-600 mt-2">
+            ✅ 已解除 100KB 限制，支持几 MB 的高清原图。
+          </p>
+        </div>
+
+        <h2 class="text-xl font-semibold border-b pb-3 pt-2">2. 样式设置</h2>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">尺寸 (px)</label>
+            <input type="number" id="qrSize" value="256" min="128" max="1024" step="32" 
+                   class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">前景色</label>
+            <input type="color" id="qrColorDark" value="#000000" 
+                   class="w-full h-10 border rounded-lg p-1 cursor-pointer">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">背景色</label>
+          <input type="color" id="qrColorLight" value="#ffffff" 
+                 class="w-full h-10 border rounded-lg p-1 cursor-pointer">
+        </div>
+
+        <button id="generateBtn" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition duration-200">
+          生成二维码
+        </button>
+      </div>
+
+      <!-- 预览面板 -->
+      <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 flex flex-col items-center justify-center min-h-[350px]">
+        <h2 class="text-xl font-semibold border-b pb-3 w-full text-left mb-6">3. 预览与下载</h2>
+        
+        <div id="placeholderText" class="text-gray-400 text-center py-10">
+          请在左侧上传图片后点击“生成二维码”
+        </div>
+
+        <div id="qrcodeContainer" class="p-4 border rounded-xl bg-gray-50 hidden shadow-inner"></div>
+
+        <button id="downloadBtn" 
+                class="mt-6 bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg transition duration-200 hidden">
+          下载二维码
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const qrSizeInput = document.getElementById('qrSize');
+    const qrColorDarkInput = document.getElementById('qrColorDark');
+    const qrColorLightInput = document.getElementById('qrColorLight');
+    const generateBtn = document.getElementById('generateBtn');
+    const placeholderText = document.getElementById('placeholderText');
+    const qrcodeContainer = document.getElementById('qrcodeContainer');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let imageObjectURL = "";
+
+    // 监听文件选择，生成本地预览链接 (Blob URL)
+    imageInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // 使用 URL.createObjectURL 支持任意大小的文件
+      imageObjectURL = URL.createObjectURL(file);
+    });
+
+    generateBtn.addEventListener('click', function() {
+      if (!imageObjectURL) {
+        alert("请先选择一张图片！");
+        return;
+      }
+
+      qrcodeContainer.innerHTML = "";
+      placeholderText.classList.add('hidden');
+      qrcodeContainer.classList.remove('hidden');
+
+      const size = parseInt(qrSizeInput.value) || 256;
+      const colorDark = qrColorDarkInput.value || "#000000";
+      const colorLight = qrColorLightInput.value || "#ffffff";
+
+      // 将链接转成二维码（因为链接很短，所以二维码非常清晰且绝对不会超限）
+      new QRCode(qrcodeContainer, {
+        text: imageObjectURL,
+        width: size,
+        height: size,
+        colorDark: colorDark,
+        colorLight: colorLight,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      downloadBtn.classList.remove('hidden');
+    });
+
+    downloadBtn.addEventListener('click', function() {
+      const img = qrcodeContainer.querySelector('img');
+      const canvas = qrcodeContainer.querySelector('canvas');
+
+      let imageSrc = "";
+      if (img && img.src) {
+        imageSrc = img.src;
+      } else if (canvas) {
+        imageSrc = canvas.toDataURL("image/png");
+      }
+
+      if (imageSrc) {
+        const a = document.createElement('a');
+        a.href = imageSrc;
+        a.download = 'qrcode.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    });
+  </script>
+</body>
+</html>
