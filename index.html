@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图片转二维码生成器</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- QRCode.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+
+  <div class="max-w-4xl mx-auto py-10 px-4">
+    <!-- Header -->
+    <header class="text-center mb-10">
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">图片转二维码生成器</h1>
+      <p class="text-gray-600">上传本地图片，自动将其编码并生成对应的二维码</p>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- 控制面板 / 参数设置 -->
+      <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 space-y-6">
+        <h2 class="text-xl font-semibold border-b pb-3">1. 选择图片</h2>
+        
+        <!-- 上传区域 -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">上传本地图片</label>
+          <input type="file" id="imageInput" accept="image/*" 
+                 class="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer border rounded-lg p-1" />
+          <p class="text-xs text-red-500 mt-2 hidden" id="sizeWarning">
+            ⚠️ 提示：图片较大时生成的二维码密集度极高，建议优先使用 100KB 以下的小图。
+          </p>
+        </div>
+
+        <h2 class="text-xl font-semibold border-b pb-3 pt-2">2. 自定义样式</h2>
+        
+        <!-- 尺寸与颜色设置 -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">尺寸 (px)</label>
+            <input type="number" id="qrSize" value="256" min="128" max="1024" step="32" 
+                   class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">前景色</label>
+            <input type="color" id="qrColorDark" value="#000000" 
+                   class="w-full h-10 border rounded-lg p-1 cursor-pointer">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">背景色</label>
+          <input type="color" id="qrColorLight" value="#ffffff" 
+                 class="w-full h-10 border rounded-lg p-1 cursor-pointer">
+        </div>
+
+        <!-- 生成按钮 -->
+        <button id="generateBtn" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition duration-200">
+          生成二维码
+        </button>
+      </div>
+
+      <!-- 预览面板 -->
+      <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100 flex flex-col items-center justify-center min-h-[350px]">
+        <h2 class="text-xl font-semibold border-b pb-3 w-full text-left mb-6">3. 预览与下载</h2>
+        
+        <!-- 占位提示 -->
+        <div id="placeholderText" class="text-gray-400 text-center py-10">
+          请在左侧上传图片后点击“生成二维码”
+        </div>
+
+        <!-- 二维码展示区 -->
+        <div id="qrcodeContainer" class="p-4 border rounded-xl bg-gray-50 hidden shadow-inner"></div>
+
+        <!-- 下载按钮 -->
+        <button id="downloadBtn" 
+                class="mt-6 bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-2 rounded-lg transition duration-200 hidden">
+          下载二维码
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const sizeWarning = document.getElementById('sizeWarning');
+    const qrSizeInput = document.getElementById('qrSize');
+    const qrColorDarkInput = document.getElementById('qrColorDark');
+    const qrColorLightInput = document.getElementById('qrColorLight');
+    const generateBtn = document.getElementById('generateBtn');
+    const placeholderText = document.getElementById('placeholderText');
+    const qrcodeContainer = document.getElementById('qrcodeContainer');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let base64String = "";
+
+    // 监听文件选择并转换为 Base64
+    imageInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // 文件大小超过 200KB 时显示提示
+      if (file.size > 200 * 1024) {
+        sizeWarning.classList.remove('hidden');
+      } else {
+        sizeWarning.classList.add('hidden');
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        base64String = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // 点击生成二维码
+    generateBtn.addEventListener('click', function() {
+      if (!base64String) {
+        alert("请先选择一张图片！");
+        return;
+      }
+
+      // 清空旧数据
+      qrcodeContainer.innerHTML = "";
+      placeholderText.classList.add('hidden');
+      qrcodeContainer.classList.remove('hidden');
+
+      const size = parseInt(qrSizeInput.value) || 256;
+      const colorDark = qrColorDarkInput.value || "#000000";
+      const colorLight = qrColorLightInput.value || "#ffffff";
+
+      try {
+        // 生成二维码
+        new QRCode(qrcodeContainer, {
+          text: base64String,
+          width: size,
+          height: size,
+          colorDark: colorDark,
+          colorLight: colorLight,
+          correctLevel: QRCode.CorrectLevel.L // 使用低纠错率以容纳更多字符
+        });
+
+        downloadBtn.classList.remove('hidden');
+      } catch (err) {
+        alert("图片体积过大，超出二维码可容纳的最大文本数据量，请尝试选择体积更小的图片。");
+        console.error(err);
+      }
+    });
+
+    // 下载二维码图片
+    downloadBtn.addEventListener('click', function() {
+      const img = qrcodeContainer.querySelector('img');
+      const canvas = qrcodeContainer.querySelector('canvas');
+
+      let imageSrc = "";
+      if (img && img.src) {
+        imageSrc = img.src;
+      } else if (canvas) {
+        imageSrc = canvas.toDataURL("image/png");
+      }
+
+      if (imageSrc) {
+        const a = document.createElement('a');
+        a.href = imageSrc;
+        a.download = 'qrcode.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    });
+  </script>
+</body>
+</html>
